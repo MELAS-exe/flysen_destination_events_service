@@ -1,1 +1,97 @@
-spring.application.name=flysen_destination_events_service
+server:
+  port: ${SERVER_PORT:8083}
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME:destinations-events-service}
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# Firebase Configuration
+firebase:
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH}
+  storage-bucket: ${FIREBASE_STORAGE_BUCKET:bucket-name.appspot.com}
+  firestore:
+    database-id: ${FIRESTORE_DATABASE_ID:(default)}
+
+# Google Places API Configuration
+google:
+  places:
+    api-key: ${GOOGLE_PLACES_API_KEY:}
+
+# Weather API Configuration
+weather:
+  api:
+    url: ${WEATHER_API_URL:https://api.openweathermap.org/data/2.5}
+    key: ${WEATHER_API_KEY:}
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    com.spacehackers.flysen: DEBUG
+    com.google.cloud.firestore: INFO
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Resilience4j Circuit Breaker
+resilience4j:
+  circuitbreaker:
+    instances:
+      firestore:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      places-api:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 60
+      weather-api:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 60
+
+# API Documentation
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
+# Application specific properties
+app:
+  destination:
+    cache-ttl: 3600
+    pagination:
+      default-page-size: 20
+      max-page-size: 100
+  event:
+    featured-limit: 10
+    upcoming-days: 90

@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  destinations-events-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: destinations-events-service
+    ports:
+      - "8083:8083"
+    environment:
+      # Firebase Configuration
+      - FIREBASE_CREDENTIALS_PATH=/app/config/firebase-service-account.json
+      - FIREBASE_STORAGE_BUCKET=sembene-app.appspot.com
+      - FIRESTORE_DATABASE_ID=(default)
+
+      # Google Places API
+      - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
+
+      # Weather API
+      - WEATHER_API_URL=https://api.openweathermap.org/data/2.5
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
+
+      # JVM Options
+      - JAVA_OPTS=-Xms512m -Xmx1024m
+    volumes:
+      # Mount Firebase credentials
+      - ./firebase-service-account.json:/app/config/firebase-service-account.json:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8083/api/v1/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - sembene-network
+
+networks:
+  sembene-network:
+    driver: bridge

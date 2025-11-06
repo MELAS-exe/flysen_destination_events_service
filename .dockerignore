@@ -1,0 +1,13 @@
+target/
+!target/destinations-events-service-*.jar
+.mvn/
+mvnw
+mvnw.cmd
+.git/
+.gitignore
+*.md
+.idea/
+*.iml
+.vscode/
+.DS_Store
+*.log

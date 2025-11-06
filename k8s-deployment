@@ -1,0 +1,167 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sembene
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: destinations-events-config
+  namespace: sembene
+data:
+  FIREBASE_STORAGE_BUCKET: "sembene-app.appspot.com"
+  FIRESTORE_DATABASE_ID: "(default)"
+  WEATHER_API_URL: "https://api.openweathermap.org/data/2.5"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: destinations-events-secrets
+  namespace: sembene
+type: Opaque
+stringData:
+  GOOGLE_PLACES_API_KEY: "your-google-places-api-key"
+  WEATHER_API_KEY: "your-weather-api-key"
+  firebase-credentials.json: |
+    {
+      "type": "service_account",
+      "project_id": "your-project-id",
+      "private_key_id": "your-key-id",
+      "private_key": "your-private-key",
+      "client_email": "your-client-email"
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: destinations-events-service
+  namespace: sembene
+  labels:
+    app: destinations-events-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: destinations-events-service
+  template:
+    metadata:
+      labels:
+        app: destinations-events-service
+        version: v1
+    spec:
+      containers:
+      - name: destinations-events-service
+        image: destinations-events-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8083
+          name: http
+          protocol: TCP
+        env:
+        - name: FIREBASE_CREDENTIALS_PATH
+          value: "/etc/firebase/firebase-credentials.json"
+        - name: FIREBASE_STORAGE_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: destinations-events-config
+              key: FIREBASE_STORAGE_BUCKET
+        - name: FIRESTORE_DATABASE_ID
+          valueFrom:
+            configMapKeyRef:
+              name: destinations-events-config
+              key: FIRESTORE_DATABASE_ID
+        - name: GOOGLE_PLACES_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: destinations-events-secrets
+              key: GOOGLE_PLACES_API_KEY
+        - name: WEATHER_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: destinations-events-config
+              key: WEATHER_API_URL
+        - name: WEATHER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: destinations-events-secrets
+              key: WEATHER_API_KEY
+        - name: JAVA_OPTS
+          value: "-Xms512m -Xmx1024m -XX:+UseG1GC"
+        volumeMounts:
+        - name: firebase-credentials
+          mountPath: /etc/firebase
+          readOnly: true
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/v1/actuator/health
+            port: 8083
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/v1/actuator/health
+            port: 8083
+          initialDelaySeconds: 40
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: firebase-credentials
+        secret:
+          secretName: destinations-events-secrets
+          items:
+          - key: firebase-credentials.json
+            path: firebase-credentials.json
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: destinations-events-service
+  namespace: sembene
+  labels:
+    app: destinations-events-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8083
+    targetPort: 8083
+    protocol: TCP
+    name: http
+  selector:
+    app: destinations-events-service
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: destinations-events-hpa
+  namespace: sembene
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: destinations-events-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

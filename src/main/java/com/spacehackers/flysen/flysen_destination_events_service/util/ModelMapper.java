@@ -1,4 +1,4 @@
-package com.spacehackers.flysen.flysen_destination_events_service.dtos;
+package com.spacehackers.flysen.flysen_destination_events_service.util;
 
 import com.google.cloud.Timestamp;
 import com.spacehackers.flysen.flysen_destination_events_service.dtos.DestinationDTO;
@@ -7,7 +7,6 @@ import com.spacehackers.flysen.flysen_destination_events_service.models.Destinat
 import com.spacehackers.flysen.flysen_destination_events_service.models.Event;
 
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 public class ModelMapper {
